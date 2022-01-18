@@ -3,6 +3,7 @@ pyjs9.py: connects Python and JS9 via the JS9 (back-end) helper
 """
 from __future__ import print_function
 
+import os
 import time
 import json
 import base64
@@ -42,6 +43,10 @@ js9Globals['output_verify'] = 'ignore'
 # js9Globals['retrieveAs'] = 'base64'
 # array allows us to deal with larger images
 js9Globals['retrieveAs'] = 'array'
+
+js9Globals['socketio_path'] = open(os.path.join(
+                                    os.getenv('HOME', '/home/jovyan'), ".js9Helper-socketio-path"
+                                )).read() #"js9Helper"
 
 # load fits, if available
 try:
@@ -264,10 +269,12 @@ class JS9:
             try:
                 if debug:
                     self.sockio = socketio.Client(logger=True,
-                                                  engineio_logger=True)
+                                                  engineio_logger=True,                                                  
+                                                  )
                 else:
                     self.sockio = socketio.Client()
-                self.sockio.connect(host)
+                self.sockio.connect(host, 
+                                    socketio_path=js9Globals['socketio_path'])
             except Exception as e:  # pylint: disable=broad-except
                 logging.warning('socketio connect failed: %s, using html', e)
                 js9Globals['transport'] = 'html'
@@ -327,6 +334,7 @@ class JS9:
         if js9Globals['transport'] == 'html': # pylint: disable=no-else-return
             host = self.__dict__['host']
             try:
+                logging.debug('POSTing to %s : %s', host + '/' + msg, obj)
                 url = requests.post(host + '/' + msg, json=obj)
             except IOError as e:
                 raise IOError('Cannot connect to {0}: {1}'.format(host, e))
